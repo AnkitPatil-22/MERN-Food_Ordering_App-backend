@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
-import { ref } from "process";
+
+// models/order.ts (or similar)
+export const ORDER_STATUS = [
+    "placed",
+    "paid",
+    "inProgress",
+    "outForDelivery",
+    "delivered",
+] as const;
+
+export type OrderStatus = (typeof ORDER_STATUS)[number];
 
 const orderSchema = new mongoose.Schema({
     restaurant: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
@@ -20,7 +30,7 @@ const orderSchema = new mongoose.Schema({
     totalAmount: Number,
     status: {
         type: String,
-        enum: ["placed", "paid", "inProgress", "outForDelivery", "delivered"],
+        enum: ORDER_STATUS,
     },
     createdAt: { type: Date, default: Date.now },
 });

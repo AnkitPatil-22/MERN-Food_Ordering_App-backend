@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
-import mongoose, { Mongoose } from "mongoose";
-import Restaurant from "../models/restaurant";
-import cloudinary from "cloudinary";
-import Order from "../models/order";
+import * as RestaruantServie from "../services/MyRestaurant.service";
+import * as OrderService from "../services/Order.service";
+import { OrderStatus } from "../models/order";
 
 const getMyRestaurant = async (req: Request, res: Response) => {
     try {
-        const restaurant = await Restaurant.findOne({
-            userId: req.userId,
-        });
+        const restaurant = await RestaruantServie.findRestaurantByUserId(
+            req.userId,
+        );
         if (!restaurant) {
             return res.status(404).json({ message: "Restaruant not found " });
         }
@@ -21,9 +20,8 @@ const getMyRestaurant = async (req: Request, res: Response) => {
 
 const createMyRestaurant = async (req: Request, res: Response) => {
     try {
-        const existingRestaurant = await Restaurant.findOne({
-            userId: req.userId,
-        });
+        const existingRestaurant =
+            await RestaruantServie.findRestaurantByUserId(req.userId);
 
         if (existingRestaurant) {
             return res
@@ -31,13 +29,15 @@ const createMyRestaurant = async (req: Request, res: Response) => {
                 .json({ message: "Restaurant already exists" });
         }
 
-        const imageUrl = await uploadImage(req.file as Express.Multer.File);
+        const imageUrl = await RestaruantServie.uploadRestaurantImage(
+            req.file as Express.Multer.File,
+        );
 
-        const restaurant = new Restaurant(req.body);
-        restaurant.imageUrl = imageUrl;
-        restaurant.userId = new mongoose.Types.ObjectId(req.userId);
-        restaurant.lastUpdated = new Date();
-        await restaurant.save();
+        const restaurant = await RestaruantServie.createRestaurant(
+            req.userId,
+            req.body,
+            imageUrl,
+        );
 
         res.status(201).send(restaurant);
     } catch (error) {
@@ -48,29 +48,16 @@ const createMyRestaurant = async (req: Request, res: Response) => {
 
 const updateMyRestaurant = async (req: Request, res: Response) => {
     try {
-        const restaurant = await Restaurant.findOne({
-            userId: req.userId,
-        });
+        const restaurant = await RestaruantServie.updateRestaurant(
+            req.userId,
+            req.body,
+            req.file,
+        );
 
         if (!restaurant) {
             return res.status(404).json({ message: "Restaurant not found" });
         }
 
-        restaurant.restaurantName = req.body.restaurantName;
-        restaurant.city = req.body.city;
-        restaurant.country = req.body.country;
-        restaurant.deliveryPrice = req.body.deliveryPrice;
-        restaurant.estimatedDeliveryTime = req.body.estimatedDeliveryTime;
-        restaurant.cuisines = req.body.cuisines;
-        restaurant.menuItems = req.body.menuItems;
-        restaurant.lastUpdated = new Date();
-
-        if (req.file) {
-            const imageUrl = await uploadImage(req.file as Express.Multer.File);
-            restaurant.imageUrl = imageUrl;
-        }
-
-        await restaurant.save();
         res.status(200).send(restaurant);
     } catch (error) {
         console.log("error", error);
@@ -80,14 +67,16 @@ const updateMyRestaurant = async (req: Request, res: Response) => {
 
 const getMyRestaurantOrders = async (req: Request, res: Response) => {
     try {
-        const restaurant = await Restaurant.findOne({ userId: req.userId });
+        const restaurant = await RestaruantServie.findRestaurantByUserId(
+            req.userId,
+        );
         if (!restaurant) {
             return res.status(404).json({ message: "restaurant not found" });
         }
 
-        const orders = await Order.find({ restaurant: restaurant._id })
-            .populate("restaurant")
-            .populate("user");
+        const orders = await OrderService.getOrdersForRestaurant(
+            restaurant._id.toString(),
+        );
 
         res.json(orders);
     } catch (error) {
@@ -101,33 +90,23 @@ const updateOrderStatus = async (req: Request, res: Response) => {
         const orderId = req.params.orderId;
         const status = req.body.status;
 
-        const order = await Order.findById(orderId);
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
-        }
+        const updatedOrder = await OrderService.updateOrderStatus(
+            orderId,
+            status as OrderStatus,
+            req.userId,
+        );
 
-        const restaurant = await Restaurant.findById(order.restaurant);
-        if (restaurant?.userId?.toString() !== req.userId) {
-            return res.status(401).send();
-        }
-
-        order.status = status;
-        await order.save();
-
-        res.status(200).json(order);
-    } catch (error) {
+        res.status(200).json(updatedOrder);
+    } catch (error: any) {
         console.log(error);
+        if (error.message === "Order not found")
+            return res.status(404).json({ message: error.message });
+        if (error.message === "Unauthorized")
+            return res
+                .status(401)
+                .json({ message: "Not authorized to update this order" });
         res.status(500).json({ message: "Something went wrong" });
     }
-};
-
-const uploadImage = async (file: Express.Multer.File) => {
-    const image = file;
-    const base64Image = Buffer.from(image.buffer).toString("base64");
-    const dataURI = `data:${image.mimetype};base64,${base64Image}`;
-
-    const uploadResponse = await cloudinary.v2.uploader.upload(dataURI);
-    return uploadResponse.url;
 };
 
 export default {
