@@ -1,15 +1,9 @@
 import { Request, Response } from "express";
 import Stripe from "stripe";
-import Restaurant, { MenuItemType } from "../models/restaurant";
-import Order from "../models/order";
 import * as OrderService from "../services/Order.service";
 import * as StripeService from "../services/Stripe.service";
 import * as RestaurantService from "../services/Restaurant.service";
 import { CheckoutSessionRequest } from "../shared/types/checkout.types";
-
-const STRIPE = new Stripe(process.env.STRIPE_API_KEY as string);
-const FRONTEND_URL = process.env.FRONTEND_URL as string;
-const STRIPE_ENDPOINT_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string;
 
 const getOrders = async (req: Request, res: Response) => {
     try {

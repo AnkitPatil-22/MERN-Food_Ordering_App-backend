@@ -8,6 +8,7 @@ import { v2 as cloudinary } from "cloudinary";
 import myRestaurantRoute from "./routes/MyRestaurantRoute";
 import restaurantRoute from "./routes/RestaurantRoute";
 import orderRoute from "./routes/OrderRoute";
+import OrderController from "./controllers/OrderController";
 
 mongoose
     .connect(process.env.MONGODB_CONNECTION_STRING as string)
@@ -21,9 +22,24 @@ cloudinary.config({
 
 const app = express();
 
-app.use(cors());
+app.use(
+    cors({
+        origin: process.env.FRONTEND_URL,
+        exposedHeaders: [
+            "Retry-After",
+            "RateLimit-Limit",
+            "RateLimit-Remaining",
+        ],
+    }),
+);
 
-app.post("/api/order/checkout/webhook", express.raw({ type: "*/*" }));
+app.post(
+    "/api/order/checkout/webhook",
+    express.raw({ type: "*/*" }),
+    OrderController.stripeWebhookHandler,
+);
+
+app.set("trust proxy", 1);
 
 app.use(express.json());
 

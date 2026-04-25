@@ -3,8 +3,10 @@ import multer from "multer";
 import MyRestaurantController from "../controllers/MyResturantController";
 import { jwtCheck, jwtParse } from "../middleware/auth";
 import { validateMyRestaurantRequest } from "../middleware/validation";
+import { generalLimiter, sensitiveLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
+router.use(generalLimiter);
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -20,14 +22,14 @@ router.get(
     "/order",
     jwtCheck,
     jwtParse,
-    MyRestaurantController.getMyRestaurantOrders
+    MyRestaurantController.getMyRestaurantOrders,
 );
 
 router.patch(
     "/order/:orderId/status",
     jwtCheck,
     jwtParse,
-    MyRestaurantController.updateOrderStatus
+    MyRestaurantController.updateOrderStatus,
 );
 
 router.get("/", jwtCheck, jwtParse, MyRestaurantController.getMyRestaurant);
@@ -38,7 +40,8 @@ router.post(
     validateMyRestaurantRequest,
     jwtCheck,
     jwtParse,
-    MyRestaurantController.createMyRestaurant
+    sensitiveLimiter,
+    MyRestaurantController.createMyRestaurant,
 );
 
 router.put(
@@ -47,7 +50,7 @@ router.put(
     validateMyRestaurantRequest,
     jwtCheck,
     jwtParse,
-    MyRestaurantController.updateMyRestaurant
+    MyRestaurantController.updateMyRestaurant,
 );
 
 export default router;
