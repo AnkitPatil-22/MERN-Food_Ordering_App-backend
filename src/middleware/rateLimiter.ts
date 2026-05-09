@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 /**
  * A helper function to create consistent limiters across the app.
@@ -15,7 +15,7 @@ const createLimiter = (windowMs: number, max: number, message: string) => {
         // CONCEPT 1: DYNAMIC KEY GENERATION
         // Prioritize the User ID if logged in, otherwise fall back to IP.
         keyGenerator: (req: any) => {
-            return req.userId || req.ip;
+            return req.userId || ipKeyGenerator(req.ip);
         },
 
         // CONCEPT 2: ENVIRONMENT SKIPPING
