@@ -105,6 +105,9 @@ const updateOrderStatus = async (req: Request, res: Response) => {
             return res
                 .status(401)
                 .json({ message: "Not authorized to update this order" });
+        if (error.message.includes("Invalid status transition")) {
+            return res.status(400).json({ message: error.message });
+        }
         res.status(500).json({ message: "Something went wrong" });
     }
 };
